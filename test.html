@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<script type="module">
+    import {TestSuite, assert, log, error} from "./index.js";
+
+    const {describe, it} = new TestSuite();
+
+    describe("Example Test Suite", () => {
+        it('Successful test', () => {
+            assert(true, 'Expected `true`');
+        });
+        it('other test', () => {
+            assert(false, 'Expected `true`');
+        });
+        it('Tests 3', () => {
+            assert(false, 'Expected `true`');
+        });
+
+
+        describe('Other suite', () => {
+            it('Tests 4', () => {
+                assert(false, 'Expected `true`');
+            });
+        })
+    })
+        .then(log, error);
+</script>
+</body>
+</html>
