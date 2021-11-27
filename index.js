@@ -1,105 +1,84 @@
-const {log, warn, error} = console,
+const {log, warn, assert, error} = console,
 
     jsonClone = x => JSON.parse(JSON.stringify(x)),
+    noop = () => undefined,
 
-    successMsg = `SUCCESS: "%s" completed after %sms`,
+    successMsg = `"%s" completed after %sms`,
     errorMsg = '%o errored out after %sms',
-
-    assert = (arg, ...args) => {
-        console.assert(arg, ...args);
-        if (!arg) {
-            throw new Error(...args);
-        }
-    },
 
     _ensureArgsFormat = (name, fn) => {
         if (typeof name != 'string' || typeof fn != 'function') {
             throw new Error(`\`${fn.name}\` arg types are incorrect`);
         }
-    };
+    },
+
+    // Symbols
+    // ----
+    AFTER_ALL_METHOD = Symbol('afterAll'),
+    AFTER_EACH_METHOD = Symbol('afterEach'),
+    BEFORE_ALL_METHOD = Symbol('beforeAll'),
+    BEFORE_EACH_METHOD = Symbol('beforeEach'),
+    TEST_SUITE_DEFINE = Symbol('testSuiteDefine'),
+    TEST_SUITE_RUN = Symbol('testSuiteRun'),
+    TEST_CASE_RUN = Symbol('testCaseRun'),
+    DATA = Symbol('data')
+;
 
 export {jsonClone, assert, log, warn, error};
 
-export class TestSuite {
+class TestSuite {
 
-    constructor(data = {}) {
+}
+
+export class TestSuites {
+    beforeAll = noop;
+    beforeEach = noop;
+    afterAll = noop;
+    afterEach = noop;
+    describe = noop;
+    it = noop;
+
+    [DATA] = {
+        suites: {
+            failed: 0,
+            passed: 0,
+        },
+        suitesMap: new Map(),
+        tests: {
+            failed: 0,
+            passed: 0,
+        },
+        timeElapsed: 0,
+    };
+
+    constructor(options = {}) {
         Object.defineProperties(this, {
+            it: {value: this[TEST_CASE_RUN].bind(this), configurable: false},
+            test: {value: this[TEST_CASE_RUN].bind(this), configurable: false},
+            describe: {value: this[TEST_SUITE_DEFINE].bind(this), configurable: false},
             numSuitesPassed: {
                 get() {
-                    return this.suites.numPassed;
+                    return this[DATA].suites.passed;
                 },
                 enumerable: true
             },
-
             numSuitesFailed: {
                 get() {
-                    return this.suites.count - this.numSuitesPassed;
+                    return this[DATA].suites.count - this.numSuitesPassed;
                 },
                 enumerable: true
-            }
+            },
         });
-
-        Object.assign(this, {
-            timeElapsed: 0,
-            tests: {
-                count: 0,
-                numFailed: 0,
-                numPassed: 0,
-            },
-            suites: {
-                count: 0,
-                numFailed: 0,
-                numPassed: 0,
-            },
-        }, data);
+        Object.assign(this, options);
     }
 
-    async #_describe(name, fn) {
+    [TEST_SUITE_DEFINE](name, fn) {
         _ensureArgsFormat(name, fn);
-
-        this.suites.count += 1;
-
-        console.group(name);
-        console.count('Suites');
-        const t0 = performance.now();
-        try {
-            const rslt = fn();
-            if (rslt && rslt instanceof Promise) {
-                rslt
-                    .then(() => {
-                        const t1 = performance.now();
-                        log(`SUITE SUCCESS:  "${name}" completed successfully after ${Math.round((t1 - t0) * 1000)}ms.`);
-                    })
-                    .catch(err => {
-                        const t1 = performance.now();
-                        log(`SUITE ERROR: \`${err}\`, errored out after  ${Math.round((t1 - t0) * 1000)}ms.`);
-                        this.suites.numFailed += 1;
-                    })
-                    .finally(() => {
-                        console.groupEnd();
-                    });
-            } else {
-
-                console.groupEnd();
-            }
-        } catch (err) {
-            const t1 = performance.now();
-            log(`SUITE ERROR: \`${err}\`, errored out after  ${Math.round((t1 - t0) * 1000)}ms.`);
-            console.groupEnd();
-        }
-        log(jsonClone(this));
+        this[DATA].suitesMap.set(name, fn);
     }
 
-    describe = this.#_describe.bind(this);
-
-    async #_it(name, fn) {
-
+    [TEST_CASE_RUN](name, fn) {
         _ensureArgsFormat(name, fn);
-
-        this.tests.count += 1;
-
-        console.count('Test');
-        console.group(name);
 
         const t0 = performance.now();
 
@@ -108,34 +87,68 @@ export class TestSuite {
             if (rslt && rslt instanceof Promise) {
                 return rslt
                     .then(() => {
-                        const t1 = performance.now();
-                        log(successMsg, name, (t1 - t0) * 1000);
-                        this.tests.numPassed += 1;
+                        log(successMsg, name, (performance.now() - t0) * 1000);
+                        this[DATA].tests.passed += 1;
                     })
                     .catch(err => {
-                        const t1 = performance.now();
-                        log(`${err};  Errored out after ${Math.round((t1 - t0) * 1000)}ms`);
-                        this.tests.numFailed += 1;
+                        error(`"${name}" ${err};  Errored out after ${Math.round((performance.now() - t0) * 1000)}ms`);
+                        this[DATA].tests.failed += 1;
                         return err;
-                    })
-                    .finally(() => console.groupEnd());
+                    });
             } else {
-                this.tests.numPassed += 1;
-                const t1 = performance.now();
-                log(successMsg, name, Math.round((t1 - t0) * 1000));
-                console.groupEnd();
+                this[DATA].tests.passed += 1;
+                log(successMsg, name, Math.round((performance.now() - t0) * 1000));
             }
         } catch (e) {
-            this.tests.numFailed += 1;
-            const t1 = performance.now();
-            log(errorMsg, e, Math.round((t1 - t0) * 1000));
+            this[DATA].tests.failed += 1;
+            error(errorMsg, e, Math.round((performance.now() - t0) * 1000));
+        }
+    }
+
+    [TEST_SUITE_RUN](name, fn) {
+        _ensureArgsFormat(name, fn);
+
+        console.group(name);
+
+        const t0 = performance.now();
+
+        try {
+            const rslt = fn();
+            if (rslt && rslt instanceof Promise) {
+                rslt
+                    .then(() => {
+                        log(`"${name}" completed after ${Math.round((performance.now() - t0) * 1000)}ms.`);
+                        this[DATA].suites.passed += 1;
+                    })
+                    .catch(err => {
+                        error(`${name} \`${err}\`, errored out after ${Math.round((performance.now() - t0) * 1000)}ms.`);
+                        this[DATA].suites.failed += 1;
+                    })
+                    .finally(() => {
+                        console.groupEnd();
+                    });
+            } else {
+                log(`"${name}" completed after ${Math.round((performance.now() - t0) * 1000)}ms.`);
+                this[DATA].suites.passed += 1;
+                console.groupEnd();
+            }
+        } catch (err) {
+            error(`"${name}" \`${err}\`, errored out after  ${Math.round((performance.now() - t0) * 1000)}ms.`);
+            this[DATA].suites.failed += 1;
             console.groupEnd();
         }
     }
 
-    it = this.#_it.bind(this);
+    run = async () => {
+        const {[DATA]: {suitesMap}} = this,
+            entries = suitesMap.entries(),
+            out = new Array(suitesMap.size).fill(null, suitesMap.size);
+        let i = 0;
+        for (const [k, s] of entries) {
+            out[i++] = this[TEST_SUITE_RUN](k, s);
+        }
+        return Promise.all(out).then(() => {
 
-    async run() {
-
+        });
     }
 }

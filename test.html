@@ -3,32 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
 
 <script type="module">
-    import {TestSuite, assert, log, error} from "./index.js";
+    import {TestSuites, assert, log, error} from "./index.js";
 
-    const {describe, it} = new TestSuite();
+    const {describe, it, run: runTestSuites} = new TestSuites();
 
     describe("Example Test Suite", () => {
         it('Successful test', () => {
             assert(true, 'Expected `true`');
         });
-        it('other test', () => {
-            assert(false, 'Expected `true`');
+
+        it('Successful async test', () => {
+            assert(true, 'Expected `true`');
         });
-        it('Tests 3', () => {
+
+        it('Failing test', () => {
             assert(false, 'Expected `true`');
         });
 
+        it('Failing async test', async () => {
+            assert(false, 'Expected `true`');
+        });
 
-        describe('Other suite', () => {
-            it('Tests 4', () => {
+        describe('Nested suite', () => {
+            it('Failing test 3', () => {
                 assert(false, 'Expected `true`');
             });
-        })
-    })
+            it('Failing test 3 async', async () => {
+                assert(false, 'Expected `true`');
+            });
+        });
+
+        describe('Nested "async" suite', async () => {
+            it('Failing test 4', () => {
+                assert(false, 'Expected `true`');
+            });
+            it('Failing test 4 async', async () => {
+                assert(false, 'Expected `true`');
+            });
+        });
+    });
+
+    runTestSuites()
         .then(log, error);
 </script>
 </body>

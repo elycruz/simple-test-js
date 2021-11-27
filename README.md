@@ -1,8 +1,6 @@
 # simple-test-js (work-in-progress)
 
-A "no dependency" javascript testing library.
-
-The project is targeted at projects that don't require/contain any javascript tooling but "do" require javascript testing - Can be used in modern javascript projects also.
+A "no dependency" javascript testing library targeting "in browser" testing and "no tooling" projects (though can work with "tooling" projects).
 
 ## Ideas' Spec
 - Library should be a factory method that can accept options and returns an object that contains `describe`, `it`, `test`, and other, methods.
