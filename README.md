@@ -1,15 +1,8 @@
 # simple-test-js (work-in-progress)
 
-A "no dependency" javascript testing library targeting "in browser" testing and "no tooling" projects (though can work with "tooling" projects).
-
-## Ideas' Spec
-- Library should be a factory method that can accept options and returns an object that contains `describe`, `it`, `test`, and other, methods.
+A "no dependency", "**no tooling required**", and "bare minimum", javascript testing library.
 
 ## Usage
-
-The library consist of functions that run and keep their own state and functions that are fashioned after 'mochajs', 'jasmine' and/or 'jest' (provides describe, it, and test etc. methods).
-
-The other main difference is we expect the user to bring their own assertion libraries to the party (or better yet, use \`console\`'s \`assert\` (and other built-in methods) to acheive their testing requirements (examples to come later).
 
 @todo
 
@@ -17,9 +10,11 @@ The other main difference is we expect the user to bring their own assertion lib
 
 @todo
 
-- `(describe | testSuite)(string, (() => any) | (() => Promise<any>)): Promise<any>`
-- `(it | test)(string, (() => any) | (() => Promise<any>)): Promise<any>`
+- `(describe | testSuite)(string, ((TestSuites?) => any) | ((TestSuites?) => Promise<any>)): TestSuites`
+- `(it | test)(string, ((TestSuite?) => any) | ((TestSuite?) => Promise<any>)): TestSuite`
+
+## Todos:
+- [ ] tests - Should be able to run in browser and/or node (etc.).
 
 ## License
-GPL
-
+GPL + Apache 2.0
