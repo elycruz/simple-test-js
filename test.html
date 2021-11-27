@@ -10,9 +10,9 @@
 <script type="module">
     import {TestSuites, assert, log, error} from "./index.js";
 
-    const {describe, it, run: runTestSuites} = new TestSuites();
+    const {describe, run: runTestSuites} = new TestSuites();
 
-    describe("Example Test Suite", () => {
+    describe("Example Test Suite", ({it}) => {
         it('Successful test', () => {
             assert(true, 'Expected `true`');
         });
@@ -29,7 +29,7 @@
             assert(false, 'Expected `true`');
         });
 
-        describe('Nested suite', () => {
+        describe('Nested suite', ({it}) => {
             it('Failing test 3', () => {
                 assert(false, 'Expected `true`');
             });
@@ -38,7 +38,7 @@
             });
         });
 
-        describe('Nested "async" suite', async () => {
+        describe('Nested "async" suite', async ({it}) => {
             it('Failing test 4', () => {
                 assert(false, 'Expected `true`');
             });
