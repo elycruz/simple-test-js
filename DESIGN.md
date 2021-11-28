@@ -3,10 +3,10 @@
 ## Example use case:
 
 ```javascript
-const {describe, it, assert, run: runTestSuites} = new TestSuites();
+const {describe, assert, run: runTestSuites} = new TestSuites();
 
 // Add one, or more, test suites
-describe('Test Suite', () => {
+describe('Test Suite', ({it}) => {
     // ...
     it('should have more tests', () => {
         const value = false;
@@ -20,13 +20,13 @@ describe('Test Suite', () => {
     });
 
     // Async, nested, test suite
-    describe('Test Suite', async () => {
+    describe('Test Suite', async ({it}) => {
         // ...
     });
 });
 
 // Other test suite
-describe('Test Suite 2', () => { 
+describe('Test Suite 2', ({it}) => { 
     // ...
 });
 
@@ -37,5 +37,10 @@ console.log(runTestSuites());
 console.table(runTestSuites());
 ```
 
-Test Suite: `describe('Test Suite', () => {})`
-Test Case: `it('should ...', () => {})`
+## Approach
+Test Suites keep a map of functions to testcase objects.
+Test Suite Collections keeps a map of suite functions to suite objects.
+
+When test suite collection runs `run` is called for each test suite.
+
+When run is called for a test suite each testcase callback is called. 

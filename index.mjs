@@ -1,12 +1,12 @@
-import {noop, jsonClone, log, error} from "./utils.mjs";
+import {noop, jsonClone, log, error, info} from "./utils.mjs";
 
 import {
-  DATA,
+  DATA, SUITES,
   TEST_CASE_COMPLETE,
   TEST_CASE_DEFINE,
   TEST_CASE_RUN, TEST_SUITE_COMPLETE,
   TEST_SUITE_DEFINE,
-  TEST_SUITE_RUN
+  TEST_SUITE_RUN, TESTS
 } from "./constants.mjs";
 
 const successMsg = `"%s" completed after %sms`,
@@ -18,16 +18,41 @@ const successMsg = `"%s" completed after %sms`,
     }
   },
 
-  defaultOnTestCaseComplete = suite => null,
+  defaultSuiteReporter = suite => {
+    console.info(`${suite.name} completed after ${suite.timeElapsed * 1000}ms`);
+  },
 
-  defaultOnTestSuiteComplete = suite => null
+  defaultSuitesReporter = report => {
+    console.info(`Tests completed after ${report.timeElapsed * 1000}ms`);
+    console.table(report);
+  }
 ;
 
-class TestUnit {
+const TestUnitSate = {
+  Pending: 'pending',
+  Running: 'running',
+  Completed: 'completed',
+  Failed: 'failed'
+}
+
+class TestSuiteData {
+  testsCount = 0;
+  testsRunCount = 0;
+  testsFailedCount = 0;
+  suitesCount = 0;
+  suitesRunCount = 0;
+  suitesFailedCount = 0;
+  timeCountStart = 0;
+  timeElapsed = 0;
+  timeCountEnd = 0;
+}
+
+export class TestUnit {
   idx = 0;
   name = '';
-  onComplete = noop;
-  run = noop;
+  onComplete = defaultSuiteReporter;
+  runDefinition = noop;
+  state = TestUnitSate.Pending;
 
   constructor(props = {}) {
     Object.assign(this, props || {});
@@ -37,8 +62,8 @@ class TestUnit {
         value: this.name,
         enumerable: true
       },
-      run: {
-        value: this.run,
+      definition: {
+        value: this.runDefinition,
       },
       onComplete: {
         value: this.onComplete
@@ -51,20 +76,8 @@ export class TestSuite extends TestUnit {
   it = this[TEST_CASE_DEFINE].bind(this);
   test = this.it;
 
-  // showTestCaseTimeElapsed = false;
-  // showTimeElapsed = true;
-
-  [DATA] = {
-    testsList: [],
-    testsMap: new Map(),
-    tests: {
-      count: 0,
-      runCount: 0,
-      failed: 0,
-      passed: 0,
-    },
-    timeElapsed: 0,
-  };
+  [DATA] = new TestSuiteData();
+  [TESTS] = [];
 
   constructor(props = {}) {
     super(props);
@@ -76,19 +89,8 @@ export class TestSuite extends TestUnit {
 
   [TEST_CASE_DEFINE](name, fn) {
     _ensureArgsFormat(name, fn);
-    fn.testName = name;
-    this[DATA].testsList.push(fn);
-    this[DATA].testsMap.set(fn, name);
-    this[DATA].tests.count += 1;
+    this[TESTS].push(fn);
     return this;
-  }
-
-  [TEST_CASE_COMPLETE]() {
-    const rslt =
-      this[DATA].tests.runCount += 1;
-    if (rslt === this[DATA].tests.count) {
-      this.onComplete(this);
-    }
   }
 
   [TEST_CASE_RUN](name, fn) {
@@ -97,7 +99,7 @@ export class TestSuite extends TestUnit {
     const t0 = performance.now(),
       {[DATA]: data} = this;
 
-    console.count(`"${this.name}" test`)
+    console.count(`"${this.name}" test`);
 
     try {
       const rslt = fn();
@@ -105,61 +107,58 @@ export class TestSuite extends TestUnit {
         return rslt
           .then(() => {
             log(successMsg, name, (performance.now() - t0) * 1000);
-            data.tests.passed += 1;
-            this[TEST_CASE_COMPLETE]();
+            data.testsRunCount += 1;
           })
           .catch(err => {
             error(`"${name}" ${err};  Errored out after ${Math.round((performance.now() - t0) * 1000)}ms`);
-            this[DATA].tests.failed += 1;
-            this[TEST_CASE_COMPLETE]();
+            this[DATA].testsFailedCount += 1;
+            data.testsRunCount += 1;
             return err;
           });
       } else {
-        this[DATA].tests.passed += 1;
-        this[TEST_CASE_COMPLETE]();
+        data.testsRunCount += 1;
         log(successMsg, name, Math.round((performance.now() - t0) * 1000));
       }
     } catch (e) {
-      this[DATA].tests.failed += 1;
-      this[TEST_CASE_COMPLETE]();
+      data.testsFailedCount += 1;
+      data.testsRunCount += 1;
       error(errorMsg, e, Math.round((performance.now() - t0) * 1000));
     }
   }
 
   [TEST_SUITE_RUN]() {
-    const {[DATA]: {testsList}} = this;
-    return Promise.all(testsList.map(f => this[TEST_CASE_RUN](f.name, f)))
-      .then(() => log(jsonClone(this[DATA])));
+    const {[TESTS]: tests, [DATA]: data} = this,
+      onComplete = () => {
+        data.timeElapsed =
+          data.timeCountEnd = (performance.now() - data.timeCountStart) * 1000;
+        log(jsonClone(data));
+        this.state = TestUnitSate.Completed;
+        this.onComplete(this);
+      };
+    this.state = TestUnitSate.Running;
+    data.timeCountStart = performance.now();
+    return Promise.all(tests.map(f => this[TEST_CASE_RUN](f.name, f)))
+      .then(onComplete, onComplete);
   }
 }
 
 export class TestSuites extends TestSuite {
   static name = 'TestSuites';
 
+  onComplete = defaultSuitesReporter;
+
   // beforeAll = noop;
   // beforeEach = noop;
   // afterAll = noop;
   // afterEach = noop;
 
-  [DATA] = {
-    suites: {
-      count: 0,
-      runCount: 0,
-      failed: 0,
-      passed: 0,
-    },
-    suitesList: [],
-    tests: {
-      failed: 0,
-      passed: 0,
-    },
-    timeElapsed: 0,
-  };
+  [DATA] = new TestSuiteData();
+  [SUITES] = [];
 
   constructor(props = {}) {
     super(props);
     Object.defineProperties(this, {
-      describe: {value: this[TEST_SUITE_DEFINE].bind(this)}
+      describe: {value: this[TEST_SUITE_DEFINE].bind(this)},
     });
   }
 
@@ -168,26 +167,35 @@ export class TestSuites extends TestSuite {
   }
 
   [TEST_SUITE_COMPLETE](suite) {
-    log(`Suite ${suite.name} completed`, suite);
+    // @aggregate suite report into own data
+    const {[DATA]: data} = this,
+      suiteData = suite[DATA];
+
+    data.testsCount += suiteData.testsCount;
+    data.testsRunCount += suiteData.testsRunCount;
+    data.testsFailedCount += suiteData.testsFailedCount;
+    data.timeElapsed += suiteData.timeElapsed;
+
+    info(`Suite ${suite.name} completed`, suiteData);
   }
 
   [TEST_SUITE_DEFINE](name, fn, idx = 0) {
     _ensureArgsFormat(name, fn);
     const testSuite = new TestSuite({
       name,
-      run: fn,
+      definition: fn,
       idx,
       onComplete: this[TEST_SUITE_COMPLETE].bind(this)
     });
-    testSuite.run(testSuite);
-    this[DATA].suitesList.push(testSuite);
-    this[DATA].suites.count += 1;
+    testSuite.runDefinition(testSuite);
+    this[SUITES].push(testSuite);
     return this;
   }
 
   async [TEST_SUITE_RUN](suite) {
     const {name} = suite;
     const t0 = performance.now();
+    const {[DATA]: data} = this;
 
     try {
       const rslt = suite[TEST_SUITE_RUN]();
@@ -196,32 +204,28 @@ export class TestSuites extends TestSuite {
           .then(() => {
             log(`"${name}" completed after ${Math.round((performance.now() - t0) * 1000)}ms.`);
             this[TEST_SUITE_COMPLETE](suite);
-            this[DATA].suites.passed += 1;
           })
           .catch(err => {
             error(`${name} \`${err}\`, errored out after ${Math.round((performance.now() - t0) * 1000)}ms.`);
             this[TEST_SUITE_COMPLETE](suite);
-            this[DATA].suites.failed += 1;
+            data.suitesFailedCount += 1;
           });
       } else {
         log(`"${name}" completed after ${Math.round((performance.now() - t0) * 1000)}ms.`);
         this[TEST_SUITE_COMPLETE](suite);
-        this[DATA].suites.passed += 1;
-        // console.groupEnd();
       }
     } catch (err) {
       error(`"${name}" \`${err}\`, errored out after  ${Math.round((performance.now() - t0) * 1000)}ms.`);
       this[TEST_SUITE_COMPLETE](suite);
-      this[DATA].suites.failed += 1;
-      // console.groupEnd();
+      data.suitesFailedCount += 1;
     }
   }
 
   run = async () => {
-    const {[DATA]: {suitesList}} = this;
-    return Promise.all(suitesList.map(s => this[TEST_SUITE_RUN](s))).then(() => {
+    const {[SUITES]: suites} = this;
+    return Promise.all(suites.map(s => this[TEST_SUITE_RUN](s))).then(() => {
       log('print report');
-      this.onComplete(this);
+      this.onComplete(this[DATA]);
     });
   }
 }

@@ -1,7 +1,8 @@
 import {TestSuites, TestSuite} from "./index.mjs";
 import {jsonClone} from "./utils.mjs";
+import {TEST_SUITE_RUN} from "./constants.mjs";
 
-const {assert, log, group: testGroup, groupEnd: testGroupEnd} = console,
+const {assert, log, error, group: testGroup, groupEnd: testGroupEnd} = console,
 
   hasOwnProperty = (str, x) => Object.prototype.hasOwnProperty.call(x, str),
 
@@ -10,12 +11,32 @@ const {assert, log, group: testGroup, groupEnd: testGroupEnd} = console,
       `${xTypeStr} should have own property "${k}".`)
   }),
 
-  expectedTestSuitePropNames = ['idx', 'it', 'name', 'onComplete', 'run', 'test'],
+  expectedTestSuitePropNames = ['idx', 'it', 'name', 'onComplete', 'runDefinition', 'test'],
   expectedTestSuitesPropNames = ['describe'].concat(expectedTestSuitePropNames),
+
+  AsyncFunction = (async () => {
+  }).constructor,
+  isAsyncFunction = x => x instanceof AsyncFunction,
+
   _suite = (name, testSuite) => {
-    testGroup(name);
-    testSuite();
-    testGroupEnd();
+    if (!isAsyncFunction(testSuite)) {
+      testGroup(name);
+    } else {
+      log(name);
+    }
+    const t0 = performance.now();
+    const rslt = testSuite();
+    if (rslt && rslt instanceof Promise) {
+      return rslt.then(() => {
+          log(`${name} completed after ${Math.round((performance.now() - t0) * 1000)}ms`);
+        },
+        err => {
+          error(`${name} failed after ${Math.round((performance.now() - t0) * 1000)}ms; ${err}`);
+        });
+    } else if (!isAsyncFunction(testSuite)) {
+      testGroupEnd();
+      log(`/${name} completed after ${Math.round((performance.now() - t0) * 1000)}ms`)
+    }
   };
 
 log(`Running test suites ...`)
@@ -31,11 +52,22 @@ _suite('#TestSuite', () => {
     assertHasOwnProperties(expectedTestSuitePropNames, testSuite.constructor.name, testSuite);
   });
 
-  _suite('#.onComplete', () => {
-    testGroup('__logging');
-    const ts = new TestSuite('Testing');
-    const rslt = ts.run();
-    testGroupEnd();
+  _suite('#.onComplete', async () => {
+    const ts = new TestSuite({
+      name: 'Testing',
+      onComplete: x => {
+        log('onComplete hit');
+        if (!(x instanceof TestSuite) || x !== ts) {
+          throw new Error('Expected `onComplete` to be called with calling instance of `TestSuite`');
+        }
+      }
+    });
+
+    ts.runDefinition();
+
+    await ts[TEST_SUITE_RUN]().catch(err => {
+      throw err;
+    });
   });
 });
 
