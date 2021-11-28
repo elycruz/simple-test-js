@@ -1,6 +1,6 @@
 # simple-test-js (work-in-progress)
 
-A "no dependency", "**no tooling required**", and "bare minimum", javascript testing library.
+A "**no tooling required**", "bare minimum", javascript testing library.
 
 ## Usage
 
