@@ -1,4 +1,4 @@
-import {noop, jsonClone, log, error} from "./utils.js";
+import {noop, jsonClone, log, error} from "./utils.mjs";
 
 import {
   DATA,
@@ -7,7 +7,7 @@ import {
   TEST_CASE_RUN, TEST_SUITE_COMPLETE,
   TEST_SUITE_DEFINE,
   TEST_SUITE_RUN
-} from "./constants.js";
+} from "./constants.mjs";
 
 const successMsg = `"%s" completed after %sms`,
   errorMsg = '%o errored out after %sms',
@@ -45,7 +45,7 @@ class TestUnit {
       }
     });
   }
-
+/*
   async runUnit() {
     const rslt = this.run();
     if (rslt && rslt instanceof Promise) return rslt.then(() => {
@@ -53,7 +53,7 @@ class TestUnit {
     }).catch(err => {
       log('err message', err);
     });
-  }
+  }*/
 }
 
 export class TestSuite extends TestUnit {
@@ -67,6 +67,7 @@ export class TestSuite extends TestUnit {
     testsList: [],
     testsMap: new Map(),
     tests: {
+      count: 0,
       runCount: 0,
       failed: 0,
       passed: 0,
@@ -82,20 +83,21 @@ export class TestSuite extends TestUnit {
     });
   }
 
-  [TEST_CASE_COMPLETE]() {
-    const rslt =
-      this[DATA].tests.runCount += 1;
-    if (rslt === this[DATA].testsMap.size) {
-      this.onComplete(this);
-    }
-  }
-
   [TEST_CASE_DEFINE](name, fn) {
     _ensureArgsFormat(name, fn);
     fn.testName = name;
     this[DATA].testsList.push(fn);
     this[DATA].testsMap.set(fn, name);
+    this[DATA].tests.count += 1;
     return this;
+  }
+
+  [TEST_CASE_COMPLETE]() {
+    const rslt =
+      this[DATA].tests.runCount += 1;
+    if (rslt === this[DATA].tests.count) {
+      this.onComplete(this);
+    }
   }
 
   [TEST_CASE_RUN](name, fn) {
@@ -147,12 +149,10 @@ export class TestSuites extends TestSuite {
   // beforeEach = noop;
   // afterAll = noop;
   // afterEach = noop;
-  // describe = noop;
-  // it = noop;
-  // test = noop;
 
   [DATA] = {
     suites: {
+      count: 0,
       runCount: 0,
       failed: 0,
       passed: 0,
@@ -173,11 +173,7 @@ export class TestSuites extends TestSuite {
   }
 
   [TEST_CASE_COMPLETE]() {
-    const rslt = this[DATA].suites.runCount += 1;
-    if (rslt === this[DATA].suitesList.length) {
-      log('Suites completed:', this);
-      this[TEST_SUITE_COMPLETE](this);
-    }
+    throw new Error('Should not be called.');
   }
 
   [TEST_SUITE_COMPLETE](suite) {
@@ -194,6 +190,7 @@ export class TestSuites extends TestSuite {
     });
     testSuite.run(testSuite);
     this[DATA].suitesList.push(testSuite);
+    this[DATA].suites.count += 1;
     return this;
   }
 

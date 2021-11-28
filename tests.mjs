@@ -1,5 +1,5 @@
 import {TestSuites, TestSuite} from "./index.mjs";
-import {jsonClone} from "./utils.js";
+import {jsonClone} from "./utils.mjs";
 
 const {assert, log, group: testGroup, groupEnd: testGroupEnd} = console,
 

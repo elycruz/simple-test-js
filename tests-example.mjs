@@ -1,4 +1,5 @@
-import {TestSuites, assert, log, error} from "./index.mjs";
+import {TestSuites} from "./index.mjs";
+import {assert, log, error} from "./utils.mjs";
 
 const {describe, run: runSuites} = new TestSuites();
 
