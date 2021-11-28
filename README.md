@@ -30,7 +30,9 @@ A "**no tooling required**", "bare minimum", javascript testing library.
 - `(it | test)(string, ((TestSuite?) => any) | ((TestSuite?) => Promise<any>)): TestSuite`
 
 ## Todos:
-- [ ] tests - Should be able to run in browser and/or node (etc.).
+
+See "./UNALLOCATED_TODOS.md".
 
 ## License
+
 GPL + Apache 2.0
