@@ -11,48 +11,61 @@ const {assert, log, error, warn, group: testGroup, groupEnd: testGroupEnd} = con
 
   expectedTestSuitePropNames = ['idx', 'init', 'it', 'name', 'onComplete', 'test'],
   expectedTestSuitesPropNames = ['describe'].concat(expectedTestSuitePropNames),
-  _syncSuite = (name, testSuite) => {
+  _suite = (name, testSuite) => {
     testGroup(name);
     testSuite();
     testGroupEnd();
   };
 
-log(`Running test suites (if no errors all tests passed)...`);
+log(`Running test suites ...`)
+log(`... if no errors, suites passed ...`);
 
-_syncSuite('#TestSuite', () => {
+_suite('#TestSuite', () => {
   // Constructor
   // ----
-  assert(TestSuite instanceof Function, `${TestSuite.name} constructor should be an \`instanceof Function\``);
+  _suite('Constructor', () => {
+    assert(TestSuite instanceof Function, `${TestSuite.name} constructor should be an \`instanceof Function\``);
+  });
 
   // Properties
   // ----
-  const testSuite = new TestSuite();
-  assertHasOwnProperties(expectedTestSuitePropNames, testSuite.constructor.name, testSuite);
+  _suite('Properties', () => {
+    const testSuite = new TestSuite();
+    assertHasOwnProperties(expectedTestSuitePropNames, testSuite.constructor.name, testSuite);
+  });
+
+  // `onComplete`
+  _suite('#TestSuite.onComplete', () => {
+    testGroup('__logging');
+    const ts = new TestSuite('Testing');
+    const rslt = ts.run();
+    testGroupEnd();
+  });
 });
 
-_syncSuite('#TestSuites', () => {
+_suite('#TestSuites', () => {
   // Constructor
   // ----
-  _syncSuite('Constructor', () => {
+  _suite('Constructor', () => {
     assert(TestSuites instanceof Function, `${TestSuites.name} constructor should be an \`instanceof Function\``);
     assert((new TestSuites()) instanceof TestSuite, `\`#${TestSuites.name}\` should be instanceof \`${TestSuite.name}\``);
   });
 
   // Properties
   // ----
-  _syncSuite('Properties', () => {
+  _suite('Properties', () => {
     // ----
-    _syncSuite('Own Properties', () => {
+    _suite('Own Properties', () => {
       const testSuites = new TestSuites();
       assertHasOwnProperties(expectedTestSuitesPropNames, testSuites.constructor.name, testSuites);
     });
 
     // Enumerable props
     // ----
-    _syncSuite('Enumerable Properties (should show via `toJSON()` etc.)', () => {
+    _suite('Enumerable Properties (should show via `toJSON()` etc.)', () => {
       const testSuites2 = new TestSuites(),
         asData = jsonClone(testSuites2);
-      assertHasOwnProperties(expectedTestSuitesPropNames, testSuites2.constructor.name, asData);
+      assertHasOwnProperties(['name', 'idx'], testSuites2.constructor.name, asData);
     });
   });
 

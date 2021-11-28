@@ -33,17 +33,38 @@ const {log, warn, assert, error} = console,
 
 export {jsonClone, assert, log, warn, error};
 
-export class TestSuite {
-  static name = 'TestSuite';
+function Nameable(name = '') {
+  Object.defineProperty(this, 'name', {
+    value: name,
+    configurable: false,
+    enumerable: true
+  });
+}
 
-  idx = 0;
-  init = noop;
-  it = this[TEST_CASE_DEFINE].bind(this);
-  name = '';
-  test = this.it;
-  onComplete = noop;
-  showTestCaseTimeElapsed = false;
-  showTimeElapsed = true;
+function Indexable(idx = 0) {
+  Object.defineProperty(this, 'idx', {
+    value: idx,
+    configurable: false,
+    enumerable: true
+  });
+}
+
+export class TestCase {
+  constructor(props = {}) {
+    Object.assign(this, {
+      idx: 0,
+      name: '',
+      run: noop
+    }, props || {});
+    Nameable.call(this, this.name);
+    Indexable.call(this, this.idx);
+  }
+}
+
+export class TestSuite {
+
+  // showTestCaseTimeElapsed = false;
+  // showTimeElapsed = true;
 
   [DATA] = {
     testsList: [],
@@ -57,13 +78,22 @@ export class TestSuite {
   };
 
   constructor(props = {}) {
-    Object.assign(this, props);
+    const it = this[TEST_CASE_DEFINE].bind(this);
+    Object.assign(this, {
+      idx: 0,
+      init: noop,
+      it,
+      name: '',
+      test: it,
+      onComplete: noop
+    }, props);
     Object.defineProperties(this, {
       idx: {value: this.idx, configurable: false},
       it: {value: this.it, configurable: false},
       init: {value: this.init, configurable: false},
       name: {value: this.name, configurable: false},
       test: {value: this.it, configurable: false},
+      run: {value: this[TEST_SUITE_RUN].bind(this), configurable: false}
     });
   }
 
