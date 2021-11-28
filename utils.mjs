@@ -1,6 +1,12 @@
-export const {log, assert, error, info} = console,
+export const {log, info, table} = console,
+  error = console.error.bind(console),
 
   jsonClone = x => JSON.parse(JSON.stringify(x)),
 
-  noop = () => undefined
+  noop = () => undefined,
+
+  milliSecondsNow = () => typeof performance != 'undefined' ? Math.round(performance.now()) * 100 : Date.now(),
+
+  // Error symbol
+  xMark = String.fromCodePoint(0x274C)
 ;

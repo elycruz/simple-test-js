@@ -1,7 +1,14 @@
 import {TestSuites} from "./index.mjs";
-import {assert, log, error} from "./utils.mjs";
+import {log, error} from "./utils.mjs";
 
-const {describe, run: runSuites} = new TestSuites();
+const {describe, run: runSuites} = new TestSuites({name: 'tests-example.mjs'}),
+
+  assert = (rslt, msg) => {
+    if (!rslt) {
+      throw new Error(`Assertion Failed: ${msg}`);
+    }
+    return rslt;
+  };
 
 describe("Example Test Suite", ({it}) => {
   it('Successful test', () => {
@@ -14,6 +21,12 @@ describe("Example Test Suite", ({it}) => {
 
   it('Failing test', () => {
     assert(false, 'Expected `true`');
+  });
+
+  it('directly throwing an error', () => {
+    if (!false) {
+      throw new Error('Expected `true`');
+    }
   });
 
   it('Failing async test', async () => {
