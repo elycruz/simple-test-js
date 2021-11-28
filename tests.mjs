@@ -1,6 +1,7 @@
-import {jsonClone, TestSuites, TestSuite} from "./index.mjs";
+import {TestSuites, TestSuite} from "./index.mjs";
+import {jsonClone} from "./utils.js";
 
-const {assert, log, error, warn, group: testGroup, groupEnd: testGroupEnd} = console,
+const {assert, log, group: testGroup, groupEnd: testGroupEnd} = console,
 
   hasOwnProperty = (str, x) => Object.prototype.hasOwnProperty.call(x, str),
 
@@ -9,7 +10,7 @@ const {assert, log, error, warn, group: testGroup, groupEnd: testGroupEnd} = con
       `${xTypeStr} should have own property "${k}".`)
   }),
 
-  expectedTestSuitePropNames = ['idx', 'init', 'it', 'name', 'onComplete', 'test'],
+  expectedTestSuitePropNames = ['idx', 'it', 'name', 'onComplete', 'run', 'test'],
   expectedTestSuitesPropNames = ['describe'].concat(expectedTestSuitePropNames),
   _suite = (name, testSuite) => {
     testGroup(name);
@@ -21,21 +22,16 @@ log(`Running test suites ...`)
 log(`... if no errors, suites passed ...`);
 
 _suite('#TestSuite', () => {
-  // Constructor
-  // ----
   _suite('Constructor', () => {
     assert(TestSuite instanceof Function, `${TestSuite.name} constructor should be an \`instanceof Function\``);
   });
 
-  // Properties
-  // ----
   _suite('Properties', () => {
     const testSuite = new TestSuite();
     assertHasOwnProperties(expectedTestSuitePropNames, testSuite.constructor.name, testSuite);
   });
 
-  // `onComplete`
-  _suite('#TestSuite.onComplete', () => {
+  _suite('#.onComplete', () => {
     testGroup('__logging');
     const ts = new TestSuite('Testing');
     const rslt = ts.run();

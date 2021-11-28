@@ -1,9 +1,15 @@
-const {log, warn, assert, error} = console,
+import {noop, jsonClone, log, error} from "./utils.js";
 
-  jsonClone = x => JSON.parse(JSON.stringify(x)),
-  noop = () => undefined,
+import {
+  DATA,
+  TEST_CASE_COMPLETE,
+  TEST_CASE_DEFINE,
+  TEST_CASE_RUN, TEST_SUITE_COMPLETE,
+  TEST_SUITE_DEFINE,
+  TEST_SUITE_RUN
+} from "./constants.js";
 
-  successMsg = `"%s" completed after %sms`,
+const successMsg = `"%s" completed after %sms`,
   errorMsg = '%o errored out after %sms',
 
   _ensureArgsFormat = (name, fn) => {
@@ -12,56 +18,47 @@ const {log, warn, assert, error} = console,
     }
   },
 
-  // Symbols
-  // ----
-  AFTER_ALL_METHOD = Symbol('afterAll'),
-  AFTER_EACH_METHOD = Symbol('afterEach'),
-  BEFORE_ALL_METHOD = Symbol('beforeAll'),
-  BEFORE_EACH_METHOD = Symbol('beforeEach'),
-  TEST_SUITE_DEFINE = Symbol('testSuiteDefine'),
-  TEST_SUITE_RUN = Symbol('testSuiteRun'),
-  TEST_CASE_DEFINE = Symbol('testCaseDefine'),
-  TEST_CASE_RUN = Symbol('testCaseRun'),
-  TEST_SUITE_COMPLETE = Symbol('testSuiteComplete'),
-  TEST_CASE_COMPLETE = Symbol('testCaseComplete'),
-  DATA = Symbol('data'),
-
   defaultOnTestCaseComplete = suite => null,
 
   defaultOnTestSuiteComplete = suite => null
 ;
 
-export {jsonClone, assert, log, warn, error};
+class TestUnit {
+  idx = 0;
+  name = '';
+  onComplete = noop;
+  run = noop;
 
-function Nameable(name = '') {
-  Object.defineProperty(this, 'name', {
-    value: name,
-    configurable: false,
-    enumerable: true
-  });
-}
-
-function Indexable(idx = 0) {
-  Object.defineProperty(this, 'idx', {
-    value: idx,
-    configurable: false,
-    enumerable: true
-  });
-}
-
-export class TestCase {
   constructor(props = {}) {
-    Object.assign(this, {
-      idx: 0,
-      name: '',
-      run: noop
-    }, props || {});
-    Nameable.call(this, this.name);
-    Indexable.call(this, this.idx);
+    Object.assign(this, props || {});
+
+    Object.defineProperties(this, {
+      name: {
+        value: this.name,
+        enumerable: true
+      },
+      run: {
+        value: this.run,
+      },
+      onComplete: {
+        value: this.onComplete
+      }
+    });
+  }
+
+  async runUnit() {
+    const rslt = this.run();
+    if (rslt && rslt instanceof Promise) return rslt.then(() => {
+      log('test case message');
+    }).catch(err => {
+      log('err message', err);
+    });
   }
 }
 
-export class TestSuite {
+export class TestSuite extends TestUnit {
+  it = this[TEST_CASE_DEFINE].bind(this);
+  test = this.it;
 
   // showTestCaseTimeElapsed = false;
   // showTimeElapsed = true;
@@ -78,22 +75,10 @@ export class TestSuite {
   };
 
   constructor(props = {}) {
-    const it = this[TEST_CASE_DEFINE].bind(this);
-    Object.assign(this, {
-      idx: 0,
-      init: noop,
-      it,
-      name: '',
-      test: it,
-      onComplete: noop
-    }, props);
+    super(props);
     Object.defineProperties(this, {
-      idx: {value: this.idx, configurable: false},
-      it: {value: this.it, configurable: false},
-      init: {value: this.init, configurable: false},
-      name: {value: this.name, configurable: false},
-      test: {value: this.it, configurable: false},
-      run: {value: this[TEST_SUITE_RUN].bind(this), configurable: false}
+      it: {value: this.it},
+      test: {value: this.it},
     });
   }
 
@@ -183,7 +168,7 @@ export class TestSuites extends TestSuite {
   constructor(props = {}) {
     super(props);
     Object.defineProperties(this, {
-      describe: {value: this[TEST_SUITE_DEFINE].bind(this), configurable: false}
+      describe: {value: this[TEST_SUITE_DEFINE].bind(this)}
     });
   }
 
@@ -203,17 +188,17 @@ export class TestSuites extends TestSuite {
     _ensureArgsFormat(name, fn);
     const testSuite = new TestSuite({
       name,
-      init: fn,
+      run: fn,
       idx,
       onComplete: this[TEST_SUITE_COMPLETE].bind(this)
     });
-    testSuite.init(testSuite);
+    testSuite.run(testSuite);
     this[DATA].suitesList.push(testSuite);
     return this;
   }
 
   async [TEST_SUITE_RUN](suite) {
-    const {name, init: fn} = suite;
+    const {name, run: fn} = suite;
 
     _ensureArgsFormat(name, fn);
 
