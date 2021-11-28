@@ -34,6 +34,17 @@ const {log, warn, assert, error} = console,
 export {jsonClone, assert, log, warn, error};
 
 export class TestSuite {
+  static name = 'TestSuite';
+
+  idx = 0;
+  init = noop;
+  it = this[TEST_CASE_DEFINE].bind(this);
+  name = '';
+  test = this.it;
+  onComplete = noop;
+  showTestCaseTimeElapsed = false;
+  showTimeElapsed = true;
+
   [DATA] = {
     testsList: [],
     testsMap: new Map(),
@@ -46,20 +57,13 @@ export class TestSuite {
   };
 
   constructor(props = {}) {
-    Object.assign(this, {
-      name: '',
-      idx: 0,
-      init: noop,
-      onComplete: noop,
-      showTestCaseTimeElapsed: false,
-      showTimeElapsed: true,
-    }, props);
+    Object.assign(this, props);
     Object.defineProperties(this, {
-      it: {value: this[TEST_CASE_DEFINE].bind(this), configurable: false},
-      test: {value: this[TEST_CASE_DEFINE].bind(this), configurable: false},
-      name: {value: this.name, configurable: false},
       idx: {value: this.idx, configurable: false},
+      it: {value: this.it, configurable: false},
       init: {value: this.init, configurable: false},
+      name: {value: this.name, configurable: false},
+      test: {value: this.it, configurable: false},
     });
   }
 
@@ -121,12 +125,9 @@ export class TestSuite {
   }
 }
 
-class TestCase {
-  name = '';
-  idx = 0;
-}
-
 export class TestSuites extends TestSuite {
+  static name = 'TestSuites';
+
   // beforeAll = noop;
   // beforeEach = noop;
   // afterAll = noop;
