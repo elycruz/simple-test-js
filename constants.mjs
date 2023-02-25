@@ -11,7 +11,7 @@ export const
     TEST_CASE_RUN = Symbol('testCaseRun'),
     TEST_SUITE_COMPLETE = Symbol('testSuiteComplete'),
     TEST_CASE_COMPLETE = Symbol('testCaseComplete'),
-    DATA = Symbol('reportData'),
+    DATA = Symbol('testSuiteData'),
     TESTS = Symbol('tests'),
     SUITES = Symbol('suites'),
     ON_COMPLETE = Symbol('onComplete')

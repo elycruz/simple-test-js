@@ -37,6 +37,7 @@ describe("Example Test Suite", ({it}) => {
     it('Failing test 3', () => {
       assert(false, 'Expected `true`');
     });
+
     it('Failing test 3 async', async () => {
       assert(false, 'Expected `true`');
     });
@@ -46,6 +47,7 @@ describe("Example Test Suite", ({it}) => {
     it('Failing test 4', () => {
       assert(false, 'Expected `true`');
     });
+
     it('Failing test 4 async', async () => {
       assert(false, 'Expected `true`');
     });

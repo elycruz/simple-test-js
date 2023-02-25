@@ -9,34 +9,80 @@ import {
   TEST_SUITE_RUN, TESTS
 } from "./constants.mjs";
 
-const successMsg = `"%s" after %sms`,
-  errorMsg = `${xMark} + '  "%c%s" %o after %sms`,
+const _successMsg = `"%s" after %sms`,
 
+  _errorMsg = `${xMark} "%c%s" %o after %sms`,
+
+  /**
+   * Error message template used by args-check reporter.
+   *
+   * @type {string}
+   * @private
+   */
+  _argsCheckFormat = `\`%s\` expects %s and %s;  Received %s %s`,
+
+  /**
+   * Checks arg types for `it`, `describe`, and `test`, functions.
+   *
+   * @param {string} name
+   * @param {function} fn
+   * @returns {void}
+   *
+   * @private
+   */
   _ensureArgsFormat = (name, fn) => {
-    if (typeof name != 'string' || typeof fn != 'function') {
-      throw new Error(`\`${fn.name}\` arg types are incorrect`);
+    const typeOfName = typeof name,
+      typeOfFn = typeof fn;
+
+    if (typeOfName !== 'string' || typeOfFn !== 'function') {
+      error(_argsCheckFormat, fn.name, 'string', 'function', typeOfName, typeOfFn);
     }
   },
 
+  /**
+   * Default Test Suite Reporter - Logs result of running test suite.
+   *
+   * @param {TestSuiteData} suiteReport
+   * @return {Promise<void>}
+   */
   defaultSuiteReporter = async suiteReport => {
     log(`${suiteReport.name} completed after ${suiteReport.timeElapsed}ms`);
-    // table(suiteReport);
+    table(suiteReport);
   },
 
-  defaultSuitesReporter = async report => {
-    log(`\n"${report.name}" test suites completed after ${report.timeElapsed}ms.  Results:`);
-    table(report);
+  /**
+   * Default Test Suites Reporter - Logs result of running all test suites.
+   *
+   * @param {TestSuiteData} suitesReport
+   * @returns {Promise<void>}
+   */
+  defaultSuitesReporter = async suitesReport => {
+    log(`\n"${suitesReport.name}" test suites completed after ${suitesReport.timeElapsed}ms.  Results:`);
+    table(suitesReport);
   }
 ;
 
-const TestUnitSate = {
+const TestUnitState = {
   Pending: 'pending',
   Running: 'running',
   Completed: 'completed',
   Failed: 'failed'
 }
 
-class TestSuiteData {
+/**
+ * Easily extensible "base" class.
+ */
+class Extend {
+  constructor(props) {
+    this.extend(props);
+  }
+
+  extend(...props) {
+    if (props.length) Object.assign(this, ...props);
+  }
+}
+
+class TestSuiteData extends Extend {
   name = '';
   testsCount = 0;
   testsRunCount = 0;
@@ -47,21 +93,17 @@ class TestSuiteData {
   timeCountStart = 0;
   timeElapsed = 0;
   timeCountEnd = 0;
-
-  constructor(props = {}) {
-    Object.assign(this, props || {});
-  }
 }
 
-export class TestUnit {
+export class TestUnit extends Extend {
   idx = 0;
   name = '';
   onComplete = noop;
   runDefinition = noop;
-  state = TestUnitSate.Pending;
+  state = TestUnitState.Pending;
 
-  constructor(props = {}) {
-    Object.assign(this, props || {});
+  constructor(props) {
+    super(props);
 
     Object.defineProperties(this, {
       name: {
@@ -86,7 +128,7 @@ export class TestSuite extends TestUnit {
   [DATA] = new TestSuiteData({name: this.name});
   [TESTS] = [];
 
-  constructor(props = {}) {
+  constructor(props) {
     super(props);
     Object.defineProperties(this, {
       it: {value: this.it},
@@ -114,6 +156,7 @@ export class TestSuite extends TestUnit {
 
     try {
       const rslt = fn();
+
       if (rslt && rslt instanceof Promise) {
         return rslt
           .then(() => {
@@ -136,15 +179,20 @@ export class TestSuite extends TestUnit {
 
   [TEST_SUITE_RUN]() {
     const {[TESTS]: tests, [DATA]: data} = this,
+
       onComplete = () => {
         data.timeElapsed =
           data.timeCountEnd = milliSecondsNow() - data.timeCountStart;
-        this.state = TestUnitSate.Completed;
+        this.state = TestUnitState.Completed;
         return this.onComplete(data);
       };
-    this.state = TestUnitSate.Running;
+
+    this.state = TestUnitState.Running;
+
     log(`Running "${this.name}"`);
+
     data.timeCountStart = milliSecondsNow();
+
     return Promise.all(tests.map(f => this[TEST_CASE_RUN](f.testName, f)))
       .then(onComplete, onComplete);
   }
@@ -163,8 +211,9 @@ export class TestSuites extends TestSuite {
   [DATA] = new TestSuiteData({name: this.name});
   [SUITES] = [];
 
-  constructor(props = {}) {
+  constructor(props) {
     super(props);
+
     Object.defineProperties(this, {
       describe: {value: this[TEST_SUITE_DEFINE].bind(this)},
     });
@@ -186,14 +235,18 @@ export class TestSuites extends TestSuite {
 
   [TEST_SUITE_DEFINE](name, fn, idx = 0) {
     _ensureArgsFormat(name, fn);
+
     const testSuite = new TestSuite({
       name,
       runDefinition: fn,
       idx
     });
+
     testSuite.runDefinition(testSuite);
+
     this[SUITES].push(testSuite);
     this[DATA].suitesCount += 1;
+
     return this;
   }
 
@@ -204,6 +257,7 @@ export class TestSuites extends TestSuite {
 
     try {
       const rslt = suite[TEST_SUITE_RUN]();
+
       if (rslt && rslt instanceof Promise) {
         return rslt
           .then(() => {
@@ -228,12 +282,15 @@ export class TestSuites extends TestSuite {
 
   run = async () => {
     const {[SUITES]: suites, [DATA]: data} = this,
+
       onComplete = async () => {
         data.timeCountEnd =
           data.timeElapsed = milliSecondsNow() - data.timeCountStart;
         return this.onComplete(data);
       };
+
     data.timeCountStart = milliSecondsNow();
+
     return Promise.all(suites.map(s => this[TEST_SUITE_RUN](s)))
       .then(onComplete, onComplete);
   }

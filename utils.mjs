@@ -1,5 +1,4 @@
-export const {log, info, table} = console,
-  error = console.error.bind(console),
+export const {log, info, table, error} = console,
 
   jsonClone = x => JSON.parse(JSON.stringify(x)),
 
